@@ -266,6 +266,13 @@
   .bonus-form input[type=number]{ width:58px; font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--bg-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:6px 8px; }
   .bonus-form input[type=text]{ flex:1; min-width:0; font-family:'Inter',sans-serif; font-size:12px; background:var(--bg-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:6px 8px; }
   .bonus-form button{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; background:var(--tc); color:#04101c; border:none; border-radius:7px; padding:6px 10px; cursor:pointer; }
+  .bonus-actions{ display:flex; gap:6px; margin-top:6px; }
+  .bonus-actions button{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; flex:1; border:none; border-radius:7px; padding:7px 4px; cursor:pointer; }
+  .bonus-actions .plus{ background:var(--tc); color:#04101c; }
+  .bonus-actions .minus{ background:var(--red); color:#04101c; }
+  .bonus-actions .undo{ background:var(--bg-2); color:var(--text-dim); border:1px solid var(--line); font-weight:500; }
+  .bonus-actions .undo:hover{ color:var(--text); border-color:var(--text-dimmer); }
+  .quick-add button[data-amount^="-"]:hover{ border-color:var(--red); color:var(--red); }
   .bonus-log{ font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--text-dimmer); margin-top:9px; max-height:70px; overflow-y:auto; }
   .bonus-log div{ padding:2px 0; border-top:1px dashed var(--line-soft); }
   .bonus-log div:first-child{ border-top:none; }
@@ -341,7 +348,7 @@
       <span><i style="background:var(--amber)"></i>Base · 10</span>
       <span><i style="background:var(--blue)"></i>Dominio · 20</span>
       <span><i style="background:var(--green)"></i>Excelencia · 30</span>
-      <span>CRIEcoins por taller (8 talleres puntuables · máximo 240)</span>
+      <span id="legend-max">CRIEcoins por taller</span>
     </div>
   </div>
 
@@ -362,7 +369,7 @@
         <tbody id="table-body"></tbody>
       </table>
     </div>
-    <div class="note"><b>Cómo funciona:</b> clic en una celda para avanzar el nivel de logro (Pendiente → Base → Dominio → Excelencia → Pendiente). En Radar de Misión y Salida solo se registra asistencia (Pendiente → Hecho), no llevan CRIEcoins. Los cambios se guardan solos y los ve cualquiera que abra este panel.</div>
+    <div class="note"><b>Cómo funciona:</b> clic en una celda para avanzar el nivel de logro (Pendiente → Base → Dominio → Excelencia → Pendiente). En Misión Prompting solo se registra asistencia (Pendiente → Hecho), no lleva CRIEcoins. Los talleres opcionales (Lobby, Orientación Nocturna, Farmear Aura) puntúan igual, pero no cuentan para el máximo. Los cambios se guardan solos y los ve cualquiera que abra este panel.</div>
 
     <div style="margin-top:22px;">
       <div class="sec-head" style="border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:12px;">
@@ -431,6 +438,12 @@
 const TROPHY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 4h8v4a4 4 0 01-8 0V4z" stroke-linejoin="round"/><path d="M8 5H5a3 3 0 003 3M16 5h3a3 3 0 01-3 3"/><path d="M10 12v2a2 2 0 002 2 2 2 0 002-2v-2"/><path d="M9 20h6M12 16v4"/></svg>';
 
 const ICONS = {
+  drone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="10" width="6" height="4" rx="1.5"/><path d="M9.5 11L5.5 7.5M14.5 11l4-3.5M9.5 13l-4 3.5M14.5 13l4 3.5"/><circle cx="4.5" cy="6.5" r="2"/><circle cx="19.5" cy="6.5" r="2"/><circle cx="4.5" cy="17.5" r="2"/><circle cx="19.5" cy="17.5" r="2"/></svg>',
+  compass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>',
+  spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8z"/><path d="M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z"/></svg>',
+  door: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 21V4a1 1 0 011-1h10a1 1 0 011 1v17M4 21h16"/><circle cx="14.5" cy="12.5" r=".8" fill="currentColor"/></svg>',
+  mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>',
+  quiz: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 115 0c0 1.7-2.5 2-2.5 4M12 17h.01"/></svg>',
   radar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12 L18 6"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>',
   checklist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12l2 2 4-4M8 17h5"/></svg>',
   radio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="15" r="5"/><path d="M12 10V4M9 4h6M6 15a6 6 0 0112 0"/></svg>',
@@ -453,20 +466,22 @@ const TEAMS = [
 
 // Talleres puntuables (llevan CRIEcoins por nivel de logro)
 const GRADED = [
-  {id:'protocolo', name:'Protocolo de Autonomía', meta:'Cama y ducha', icon:'checklist', color:'--violet'},
-  {id:'transmision', name:'Sala de Transmisión', meta:'Radio', icon:'radio', color:'--orange'},
-  {id:'caza', name:'Caza de Datos', meta:'Gymkana de lectura', icon:'search', color:'--amber'},
-  {id:'carga', name:'Carga Física', meta:'Crossfit', icon:'dumbbell', color:'--rose'},
-  {id:'torre', name:'Torre de Control', meta:'Educación vial', icon:'bike', color:'--blue'},
-  {id:'bloqueo', name:'Bloqueo Crítico', meta:'Escaperoom · Barbecho', icon:'lock', color:'--red'},
+  {id:'protocolo', name:'Pensamiento Computacional', meta:'Hacer camas y explicar duchas', icon:'checklist', color:'--violet'},
+  {id:'transmision', name:'Jeopardy', meta:'Viernes por la mañana', icon:'quiz', color:'--orange'},
+  {id:'caza', name:'Skibidi', meta:'Velada del martes', icon:'mic', color:'--amber'},
+  {id:'carga', name:'Carga Física', meta:'Paseo por el río y juego de pistas', icon:'dumbbell', color:'--rose'},
+  {id:'torre', name:'Smart Drivers', meta:'Bicis y karts', icon:'bike', color:'--blue'},
+  {id:'bloqueo', name:'Dronótica Code', meta:'Todo el jueves', icon:'drone', color:'--red'},
   {id:'laboratorio', name:'Laboratorio de Anomalías', meta:'Experimentos', icon:'flask', color:'--green'},
-  {id:'auditoria', name:'Auditoría de Sistemas', meta:'Evaluación global', icon:'shield', color:'--teal'},
+  // Opcionales: se pueden puntuar, pero no cuentan para el máximo
+  {id:'lobby', name:'Lobby', meta:'Martes por la mañana · opcional', icon:'door', color:'--teal', optional:true},
+  {id:'orientacion', name:'Orientación Nocturna', meta:'Velada del miércoles · opcional', icon:'compass', color:'--sky', optional:true},
+  {id:'aura', name:'Farmear Aura', meta:'Velada del jueves · opcional', icon:'spark', color:'--purple', optional:true},
 ];
 
 // Talleres de asistencia (sin CRIEcoins)
 const ATTENDANCE = [
-  {id:'radar', name:'Radar de Misión', meta:'Vista global', icon:'radar', color:'--cyan'},
-  {id:'salida', name:'Salida', meta:'Excursión', icon:'hike', color:'--lime'},
+  {id:'radar', name:'Misión Prompting', meta:'IA', icon:'radar', color:'--cyan'},
 ];
 
 // Conexión a Firebase Realtime Database (sustituye a window.storage / capacidades de Claude)
@@ -648,7 +663,11 @@ function renderMarcador(){
   }));
   totals.forEach(t=> t.coins = t.wc + t.bc);
   const ranked = [...totals].sort((a,b)=> b.coins - a.coins);
-  const max = GRADED.length * 30;
+  const counted = GRADED.filter(w=> !w.optional);
+  const max = counted.length * 30;
+  const nOpt = GRADED.length - counted.length;
+  const legendMax = document.getElementById('legend-max');
+  if(legendMax) legendMax.textContent = `CRIEcoins por taller (${counted.length} talleres puntuables · máximo ${max}${nOpt ? ' · '+nOpt+' opcionales aparte' : ''})`;
 
   grid.innerHTML = ranked.map((t,i)=>{
     const badges = [...GRADED, ...ATTENDANCE].map(w=>{
@@ -834,11 +853,17 @@ function renderBonus(){
           <button data-team="${t.id}" data-amount="10">+10</button>
           <button data-team="${t.id}" data-amount="20">+20</button>
           <button data-team="${t.id}" data-amount="-5">−5</button>
+          <button data-team="${t.id}" data-amount="-10">−10</button>
+          <button data-team="${t.id}" data-amount="-20">−20</button>
         </div>
         <div class="bonus-form">
-          <input type="number" id="bamt-${t.id}" placeholder="±N">
+          <input type="number" id="bamt-${t.id}" placeholder="puntos" min="0">
           <input type="text" id="breason-${t.id}" placeholder="motivo (opcional)">
-          <button data-team="${t.id}" data-custom="1">Sumar</button>
+        </div>
+        <div class="bonus-actions">
+          <button class="plus" data-team="${t.id}" data-custom="1">Sumar</button>
+          <button class="minus" data-team="${t.id}" data-custom="-1">Restar</button>
+          <button class="undo" data-team="${t.id}" data-undo="1" title="Quita el último registro de este equipo">Deshacer</button>
         </div>
         ${logHtml ? `<div class="bonus-log">${logHtml}</div>` : ''}
       </div>`;
@@ -847,15 +872,28 @@ function renderBonus(){
   grid.querySelectorAll('.quick-add button').forEach(btn=>{
     btn.addEventListener('click', ()=> addBonus(btn.dataset.team, Number(btn.dataset.amount), ''));
   });
+  grid.querySelectorAll('[data-undo]').forEach(btn=>{
+    btn.addEventListener('click', ()=> undoBonus(btn.dataset.team));
+  });
   grid.querySelectorAll('[data-custom]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const team = btn.dataset.team;
-      const amt = Number(document.getElementById('bamt-'+team).value);
+      let amt = Number(document.getElementById('bamt-'+team).value);
       const reason = document.getElementById('breason-'+team).value.trim();
       if(!amt) return;
+      if(btn.dataset.custom === '-1') amt = -Math.abs(amt);
       addBonus(team, amt, reason);
     });
   });
+}
+
+function undoBonus(team){
+  const b = state[team].bonus;
+  if(!b.log.length) return;
+  const last = b.log.pop();
+  b.total -= last.amount;
+  render();
+  saveState();
 }
 
 function addBonus(team, amount, reason){
@@ -966,7 +1004,7 @@ const EVAL_TALLERES = [
       { id:'ef2', label:'Hábitos saludables (higiene, alimentación, postura)', fila:4 },
       { id:'ef3', label:'Respeto de normas y juego limpio', fila:13 }
   ]},
-  { id:'caligrafia', nombre:'Caligrafía + Lorca', area:'Lengua Castellana y Lit.', criterios:[
+  { id:'caligrafia', nombre:'Palabras con Alma', area:'Lengua Castellana y Lit.', criterios:[
       { id:'lc1', label:'Recursos del lenguaje literario', fila:25 },
       { id:'lc2', label:'Producir textos con intención literaria', fila:26 }
   ]},
@@ -974,7 +1012,7 @@ const EVAL_TALLERES = [
       { id:'cn1', label:'Diseño y realización de experimentos guiados', fila:9 },
       { id:'cn2', label:'Comparar predicción y resultado', fila:10 }
   ]},
-  { id:'epv', nombre:'Llavero (EPV)', area:'Educación Plástica y Visual', criterios:[
+  { id:'epv', nombre:'Llavero Tech Lab', area:'Educación Plástica y Visual', criterios:[
       { id:'epv1', label:'Producir obra propia con control y confianza', fila:10 },
       { id:'epv2', label:'Expresar con creatividad y confianza', fila:11 }
   ]}
