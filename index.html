@@ -369,7 +369,7 @@
         <tbody id="table-body"></tbody>
       </table>
     </div>
-    <div class="note"><b>Cómo funciona:</b> clic en una celda para avanzar el nivel de logro (Pendiente → Base → Dominio → Excelencia → Pendiente). En Misión Prompting solo se registra asistencia (Pendiente → Hecho), no lleva CRIEcoins. Los talleres opcionales (Lobby, Orientación Nocturna, Farmear Aura) puntúan igual, pero no cuentan para el máximo. Los cambios se guardan solos y los ve cualquiera que abra este panel.</div>
+    <div class="note"><b>Cómo funciona:</b> clic en una celda para avanzar el nivel de logro (Pendiente → Base → Dominio → Excelencia → Pendiente). Los talleres opcionales (Lobby, Misión Prompting, Orientación Nocturna, Farmear Aura) puntúan igual, pero no cuentan para el máximo. Los cambios se guardan solos y los ve cualquiera que abra este panel.</div>
 
     <div style="margin-top:22px;">
       <div class="sec-head" style="border-bottom:1px solid var(--line); padding-bottom:10px; margin-bottom:12px;">
@@ -475,13 +475,13 @@ const GRADED = [
   {id:'laboratorio', name:'Laboratorio de Anomalías', meta:'Experimentos', icon:'flask', color:'--green'},
   // Opcionales: se pueden puntuar, pero no cuentan para el máximo
   {id:'lobby', name:'Lobby', meta:'Martes por la mañana · opcional', icon:'door', color:'--teal', optional:true},
+  {id:'prompting', name:'Misión Prompting', meta:'IA · martes por la tarde · opcional', icon:'radar', color:'--cyan', optional:true},
   {id:'orientacion', name:'Orientación Nocturna', meta:'Velada del miércoles · opcional', icon:'compass', color:'--sky', optional:true},
   {id:'aura', name:'Farmear Aura', meta:'Velada del jueves · opcional', icon:'spark', color:'--purple', optional:true},
 ];
 
 // Talleres de asistencia (sin CRIEcoins)
 const ATTENDANCE = [
-  {id:'radar', name:'Misión Prompting', meta:'IA', icon:'radar', color:'--cyan'},
 ];
 
 // Conexión a Firebase Realtime Database (sustituye a window.storage / capacidades de Claude)
@@ -692,8 +692,10 @@ function renderSeguimiento(){
   const body = document.getElementById('table-body');
   let html = `<tr class="section-sep"><td colspan="5" class="lbl">Talleres puntuables</td></tr>`;
   html += GRADED.map(w=> rowHtml(w, GRADED_CYCLE)).join('');
-  html += `<tr class="section-sep"><td colspan="5" class="lbl">Asistencia (sin CRIEcoins)</td></tr>`;
-  html += ATTENDANCE.map(w=> rowHtml(w, ATT_CYCLE)).join('');
+  if(ATTENDANCE.length){
+    html += `<tr class="section-sep"><td colspan="5" class="lbl">Asistencia (sin CRIEcoins)</td></tr>`;
+    html += ATTENDANCE.map(w=> rowHtml(w, ATT_CYCLE)).join('');
+  }
   body.innerHTML = html;
 
   body.querySelectorAll('.cell-btn').forEach(btn=>{
