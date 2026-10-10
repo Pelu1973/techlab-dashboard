@@ -7,6 +7,11 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
   import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+  import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+  // Cuenta compartida del equipo. El correo no es secreto ni tiene que existir de verdad:
+  // es solo el nombre de usuario de Firebase. Lo único secreto es la contraseña.
+  const TECHLAB_EMAIL = "profes@techlab-zamora.com";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAs7e9JabOIfBViinpdNZb_zTXolhNkWG4",
@@ -20,7 +25,8 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-  window.__fb = { db, ref, get, set, onValue };
+  const auth = getAuth(app);
+  window.__fb = { db, ref, get, set, onValue, auth, onAuthStateChanged, signInWithEmailAndPassword, signOut, email: TECHLAB_EMAIL };
   window.dispatchEvent(new Event('firebase-ready'));
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -266,6 +272,20 @@
   .bonus-form input[type=number]{ width:58px; font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--bg-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:6px 8px; }
   .bonus-form input[type=text]{ flex:1; min-width:0; font-family:'Inter',sans-serif; font-size:12px; background:var(--bg-2); border:1px solid var(--line); border-radius:7px; color:var(--text); padding:6px 8px; }
   .bonus-form button{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; background:var(--tc); color:#04101c; border:none; border-radius:7px; padding:6px 10px; cursor:pointer; }
+  #login-overlay{ position:fixed; inset:0; z-index:1000; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; }
+  #login-overlay.hidden{ display:none; }
+  .login-box{ width:100%; max-width:340px; border:1px solid var(--line); border-radius:14px; background:var(--panel); padding:26px 24px; text-align:center; }
+  .login-box .eyebrow{ justify-content:center; }
+  .login-box h2{ font-family:'Space Grotesk',sans-serif; font-size:20px; margin:0 0 4px; }
+  .login-box p{ font-size:12.5px; color:var(--text-dim); margin:0 0 16px; }
+  .login-box input[type=password]{ width:100%; box-sizing:border-box; font-family:'JetBrains Mono',monospace; font-size:16px; background:var(--bg-2); border:1px solid var(--line); border-radius:8px; color:var(--text); padding:11px 12px; margin-bottom:8px; }
+  .login-box input[type=password]:focus{ outline:none; border-color:var(--cyan); }
+  .login-box .login-error{ color:var(--red); font-size:12px; min-height:16px; margin-bottom:10px; }
+  .login-box button{ width:100%; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; background:var(--cyan); color:#04101c; border:none; border-radius:8px; padding:11px; cursor:pointer; }
+  .login-box button:disabled{ opacity:.6; cursor:wait; }
+  .login-user{ position:absolute; left:-9999px; opacity:0; width:1px; height:1px; }
+  .logout-btn{ margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:10.5px; background:none; border:1px solid var(--line); color:var(--text-dimmer); border-radius:7px; padding:4px 9px; cursor:pointer; }
+  .logout-btn:hover{ color:var(--text); border-color:var(--text-dimmer); }
   .bonus-actions{ display:flex; gap:6px; margin-top:6px; }
   .bonus-actions button{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; flex:1; border:none; border-radius:7px; padding:7px 4px; cursor:pointer; }
   .bonus-actions .plus{ background:var(--tc); color:#04101c; }
@@ -323,6 +343,17 @@
 </style>
 </head>
 <body>
+<div id="login-overlay">
+  <form class="login-box" id="login-form" autocomplete="on">
+    <div class="eyebrow"><span class="dot"></span>TECH LAB · CRIE DE ZAMORA</div>
+    <h2>Acceso del profesorado</h2>
+    <p>Escribe la contraseña del equipo.</p>
+    <input class="login-user" type="text" name="username" id="login-user" autocomplete="username" tabindex="-1" aria-hidden="true">
+    <input type="password" id="login-pass" name="password" autocomplete="current-password" placeholder="Contraseña" required>
+    <div class="login-error" id="login-error" role="alert"></div>
+    <button type="submit" id="login-btn">Entrar</button>
+  </form>
+</div>
 <div class="wrap">
 
   <header>
@@ -338,7 +369,7 @@
     </div>
   </header>
 
-  <div id="status" class="status"><span class="led"></span><span id="status-text">Cargando progreso…</span></div>
+  <div id="status" class="status"><span class="led"></span><span id="status-text">Cargando progreso…</span><button type="button" class="logout-btn" id="logout-btn">Cerrar sesión</button></div>
   <div id="weekbar" class="weekbar"></div>
 
   <!-- ===================== MARCADOR ===================== -->
@@ -995,7 +1026,63 @@ document.getElementById('reset-btn').addEventListener('click', ()=>{
   saveState();
 });
 
-loadState();
+// ===== Acceso con contraseña compartida (Firebase Authentication) =====
+const loginOverlay = document.getElementById('login-overlay');
+const loginForm = document.getElementById('login-form');
+const loginPass = document.getElementById('login-pass');
+const loginError = document.getElementById('login-error');
+const loginBtn = document.getElementById('login-btn');
+let appStarted = false;
+
+const LOGIN_ERRORS = {
+  'auth/invalid-credential': 'Contraseña incorrecta.',
+  'auth/wrong-password': 'Contraseña incorrecta.',
+  'auth/invalid-login-credentials': 'Contraseña incorrecta.',
+  'auth/user-not-found': 'La cuenta del equipo no existe en Firebase todavía.',
+  'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos y vuelve a probar.',
+  'auth/network-request-failed': 'Sin conexión a internet.',
+  'auth/operation-not-allowed': 'El acceso con contraseña no está activado en Firebase.',
+};
+
+async function bootWithLogin(){
+  const slow = setTimeout(()=>{ loginError.textContent = 'Tarda en conectar con Firebase. Comprueba tu conexión a internet.'; }, 8000);
+  await initFirebase();
+  clearTimeout(slow);
+  loginError.textContent = '';
+  document.getElementById('login-user').value = fb.email;
+  fb.onAuthStateChanged(fb.auth, (user)=>{
+    if(user){
+      loginOverlay.classList.add('hidden');
+      if(!appStarted){ appStarted = true; loadState(); }
+    }else{
+      loginOverlay.classList.remove('hidden');
+      setTimeout(()=> loginPass.focus(), 50);
+    }
+  });
+}
+
+loginForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(!fb) return;
+  loginError.textContent = '';
+  loginBtn.disabled = true;
+  try{
+    await fb.signInWithEmailAndPassword(fb.auth, fb.email, loginPass.value);
+    loginPass.value = '';
+  }catch(err){
+    loginError.textContent = LOGIN_ERRORS[err && err.code] || 'No se pudo entrar. Inténtalo de nuevo.';
+    loginPass.select();
+  }finally{
+    loginBtn.disabled = false;
+  }
+});
+
+document.getElementById('logout-btn').addEventListener('click', async ()=>{
+  try{ await fb.signOut(fb.auth); }catch(e){}
+  location.reload();
+});
+
+bootWithLogin();
 
 /* ===================== EVALUACIÓN CURRICULAR (independiente) ===================== */
 const EVAL_KEY = 'techlab-eval-miercoles-S' + (typeof currentWeek !== 'undefined' ? currentWeek : 1);
