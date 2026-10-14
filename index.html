@@ -516,12 +516,12 @@ const DAYS = [
   {id:'jue', label:'Jueves'},
   {id:'vie', label:'Viernes'},
 ];
-const ROOM_COLORS = ['--cyan','--violet','--orange','--lime','--amber','--rose','--blue','--teal'];
-const ROOMS = Array.from({length:8}, (_,i)=> ({id:'room'+(i+1), name:'Habitación '+(i+1), color: ROOM_COLORS[i]}));
+const ROOM_COLORS = ['--cyan','--violet','--orange','--lime','--amber','--rose','--blue','--teal','--green','--red','--sky','--purple'];
+const ROOMS = Array.from({length:12}, (_,i)=> ({id:'room'+(i+1), name:'Habitación '+(i+1), color: ROOM_COLORS[i]}));
 let state = null;
 
 function defaultState(){
-  const s = { rooms:{}, activeRooms: 8 };
+  const s = { rooms:{}, roomCount: 12 };
   TEAMS.forEach(t=>{
     s[t.id] = { bonus: { total:0, log:[] } };
     GRADED.forEach(w=> s[t.id][w.id] = 'pendiente');
@@ -536,7 +536,7 @@ function defaultState(){
 
 function normalizeState(s){
   if(!s.rooms) s.rooms = {};
-  if(!s.activeRooms) s.activeRooms = 8;
+  if(!s.roomCount) s.roomCount = 12;
   TEAMS.forEach(t=>{
     if(!s[t.id]) s[t.id] = {};
     if(!s[t.id].bonus) s[t.id].bonus = { total:0, log:[] };
@@ -603,7 +603,10 @@ function subscribeMeta(){
 
 async function loadState(){
   setStatus('Conectando con Firebase…');
-  const slowTimer = setTimeout(()=> setStatus('No conecta con Firebase: sin internet o bloqueado. Abre esta página en Chrome desde su enlace.', true), 8000);
+  const slowTimer = setTimeout(()=>{
+    setStatus('No conecta con Firebase: sin internet o bloqueado. Abre esta página en Chrome desde su enlace. Lo que marques ahora no se guarda.', true);
+    if(!state){ state = defaultState(); renderWeekbar(); render(); }
+  }, 8000);
   await initFirebase();
   await loadMeta();
   clearTimeout(slowTimer);
@@ -726,7 +729,7 @@ function rowHtml(w, cycle){
 function renderHabitacion(){
   // Salvaguarda: si por lo que sea llega un estado sin normalizar del todo, lo arreglamos aquí también.
   if(!state.rooms) state.rooms = {};
-  if(!state.activeRooms || state.activeRooms < 4 || state.activeRooms > 8) state.activeRooms = 8;
+  if(!state.roomCount || state.roomCount < 4 || state.roomCount > 12) state.roomCount = 12;
   ROOMS.forEach(r=>{
     if(!state.rooms[r.id]) state.rooms[r.id] = {};
     DAYS.forEach(d=>{ if(!(d.id in state.rooms[r.id])) state.rooms[r.id][d.id] = null; });
@@ -734,17 +737,17 @@ function renderHabitacion(){
 
   // Selector de habitaciones activas
   const picker = document.getElementById('room-count-picker');
-  const btns = [4,5,6,7,8].map(n=> `<button class="count-btn${state.activeRooms===n?' active':''}" data-n="${n}">${n}</button>`).join('');
+  const btns = [4,5,6,7,8,9,10,11,12].map(n=> `<button class="count-btn${state.roomCount===n?' active':''}" data-n="${n}">${n}</button>`).join('');
   picker.innerHTML = `<span class="count-picker"><span class="lbl">Habitaciones esta semana</span>${btns}</span>`;
   picker.querySelectorAll('.count-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      state.activeRooms = Number(btn.dataset.n);
+      state.roomCount = Number(btn.dataset.n);
       render();
       saveState();
     });
   });
 
-  const active = ROOMS.slice(0, state.activeRooms);
+  const active = ROOMS.slice(0, state.roomCount);
 
   const rankBox = document.getElementById('room-rank');
   const totals = active.map(r=>{
@@ -947,7 +950,7 @@ function renderPrintReport(){
     return { name:t.name, wc, bc, total: wc+bc };
   }).sort((a,b)=> b.total-a.total);
 
-  const active = ROOMS.slice(0, state.activeRooms);
+  const active = ROOMS.slice(0, state.roomCount);
   const roomRows = active.map(r=>{
     const days = state.rooms[r.id];
     const scored = DAYS.filter(d=> days[d.id] !== null);
@@ -979,7 +982,7 @@ function renderPrintReport(){
       <tbody>${workshopRows}</tbody>
     </table>
 
-    <h2>Habitaciones (${state.activeRooms} en uso esta semana)</h2>
+    <h2>Habitaciones (${state.roomCount} en uso esta semana)</h2>
     <table>
       <thead><tr><th>#</th><th>Habitación</th><th>Días evaluados</th><th>Total coins</th></tr></thead>
       <tbody>${roomRows.map((r,i)=> `<tr><td>${i+1}</td><td>${r.name}</td><td>${r.done}/4</td><td>${r.total}</td></tr>`).join('')}</tbody>
